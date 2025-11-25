@@ -1,0 +1,6 @@
+train: /home/ubuntu/dqh/ViTrashNet/dataset/test/images
+# val: /home/ubuntu/dqh/ViTrashNet/dataset/val/images
+val: /home/ubuntu/dqh/ViTrashNet/dataset/test/images
+
+nc: 3
+names: ['PAPER', 'PLASTIC', 'GLASS']

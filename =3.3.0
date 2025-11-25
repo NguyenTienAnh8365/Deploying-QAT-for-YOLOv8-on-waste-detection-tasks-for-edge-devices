@@ -1,0 +1,26 @@
+Collecting matplotlib
+  Using cached matplotlib-3.10.7-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (11 kB)
+Collecting contourpy>=1.0.1 (from matplotlib)
+  Using cached contourpy-1.3.3-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (5.5 kB)
+Collecting cycler>=0.10 (from matplotlib)
+  Using cached cycler-0.12.1-py3-none-any.whl.metadata (3.8 kB)
+Collecting fonttools>=4.22.0 (from matplotlib)
+  Using cached fonttools-4.60.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (112 kB)
+Collecting kiwisolver>=1.3.1 (from matplotlib)
+  Using cached kiwisolver-1.4.9-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (6.3 kB)
+Requirement already satisfied: numpy>=1.23 in /home/ubuntu/miniconda3/envs/vitrash/lib/python3.11/site-packages (from matplotlib) (2.2.6)
+Requirement already satisfied: packaging>=20.0 in /home/ubuntu/miniconda3/envs/vitrash/lib/python3.11/site-packages (from matplotlib) (25.0)
+Requirement already satisfied: pillow>=8 in /home/ubuntu/miniconda3/envs/vitrash/lib/python3.11/site-packages (from matplotlib) (12.0.0)
+Requirement already satisfied: pyparsing>=3 in /home/ubuntu/miniconda3/envs/vitrash/lib/python3.11/site-packages (from matplotlib) (3.2.5)
+Collecting python-dateutil>=2.7 (from matplotlib)
+  Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Requirement already satisfied: six>=1.5 in /home/ubuntu/miniconda3/envs/vitrash/lib/python3.11/site-packages (from python-dateutil>=2.7->matplotlib) (1.17.0)
+Using cached matplotlib-3.10.7-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (8.7 MB)
+Using cached contourpy-1.3.3-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (355 kB)
+Using cached cycler-0.12.1-py3-none-any.whl (8.3 kB)
+Using cached fonttools-4.60.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.0 MB)
+Using cached kiwisolver-1.4.9-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (1.4 MB)
+Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Installing collected packages: python-dateutil, kiwisolver, fonttools, cycler, contourpy, matplotlib
+
+Successfully installed contourpy-1.3.3 cycler-0.12.1 fonttools-4.60.1 kiwisolver-1.4.9 matplotlib-3.10.7 python-dateutil-2.9.0.post0
