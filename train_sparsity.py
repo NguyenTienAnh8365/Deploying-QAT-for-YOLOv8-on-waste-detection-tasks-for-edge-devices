@@ -5,7 +5,7 @@ model = YOLO("runs/train-norm/weights/best.pt")
 
 model.train(
     data="data.yaml",
-    epochs=100,
+    epochs=50,
     patience=20,
 
     imgsz=640,
