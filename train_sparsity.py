@@ -4,13 +4,21 @@ from ultralytics import YOLO
 model = YOLO("runs/train-norm/weights/best.pt")
 
 model.train(
-    sr=1e-2,
-    lr0=1e-3,
     data="data.yaml",
-    epochs=50,
-    patience=50,
-    project='.',
-    name='runs/train-sparsity',
+    epochs=100,
+    patience=20,
+
+    imgsz=640,
     batch=48,
-    device="cpu"
+    workers=4,
+
+    lr0=5e-4,         
+    lrf=0.1,         
+    warmup_epochs=3,
+
+    sr=5e-3,           
+
+    project=".",
+    name="runs/train-sparsity",
+    device=0           
 )
