@@ -1,6 +1,0 @@
-train: F:/Scientific Research/ViTrashNet/datasets/train/images
-val:   F:/Scientific Research/ViTrashNet/datasets/val/images
-test: F:/Scientific Research/ViTrashNet/datasets/test/images
-
-nc: 3
-names: ['PAPER', 'PLASTIC', 'GLASS']
