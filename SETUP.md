@@ -33,13 +33,13 @@ This document provides instructions for setting up the environment, preparing da
 ### 1. Standard Training
 
 ```bash
-python train.py --data trash.yaml --weights yolov8n.pt --epochs 200 --batch 32 --project . --name train-normal
+python train.py --mode standard --data data.yaml
 ```
 
 ### 2. Sparsity Training
 
 ```bash
-python train.py --data trash.yaml --weights runs/train-normal/weights/best.pt --epochs 50 --batch 32 --sr 0.01 --project . --name train-sparsity
+python train.py --mode sparsity --data data.yaml
 ```
 
 ### 3. Pruning <a id="fine-tuning"></a>
@@ -51,7 +51,7 @@ python prune.py --data trash.yaml --weights runs/train-sparsity/weights/last.pt 
 ### 4. Fine-Tuning <a id="fine-tuning"></a>
 
 ```bash
-python train.py --data trash.yaml --weights weights/pruned.pt --epochs 150 --batch 32 --project . --name train-finetune
+python train.py --mode finetune --data data.yaml
 ```
 
 ### 5. Knowledge Distillation <a id="knowledge-distillation"></a>
