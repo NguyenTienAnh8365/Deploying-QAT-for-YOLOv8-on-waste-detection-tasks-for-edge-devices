@@ -27,6 +27,7 @@ from ultralytics import __version__
 from ultralytics.cfg import get_cfg, get_save_dir
 from ultralytics.data.utils import check_cls_dataset, check_det_dataset
 from ultralytics.nn.tasks import load_checkpoint
+from ultralytics.nn.modules import Bottleneck
 from ultralytics.utils import (
     DEFAULT_CFG,
     GIT,
@@ -271,6 +272,13 @@ class BaseTrainer:
         # Compile model
         self.model = attempt_compile(self.model, device=self.device, mode=self.args.compile)
 
+        if hasattr(self.args, 'sr') and self.args.sr > 0.0:
+            LOGGER.info(colorstr('yellow', '⚠️ Sparsity Training Mode Activated! (sr={:.5f})'.format(self.args.sr)))
+            LOGGER.info(colorstr('yellow', '⚠️ AMP Scaler Disabled for Backward Pass in this mode.'))
+        else:
+            sr_val = self.args.sr if hasattr(self.args, 'sr') else 0.0
+            LOGGER.info(colorstr('green', f'✅ Standard Training Mode. (sr={sr_val})'))
+
         # Freeze layers
         freeze_list = (
             self.args.freeze
@@ -431,7 +439,31 @@ class BaseTrainer:
                     self.tloss = self.loss_items if self.tloss is None else (self.tloss * i + self.loss_items) / (i + 1)
 
                 # Backward
-                self.scaler.scale(self.loss).backward()
+                if self.args.sr > 0.0:
+                    # Sparsity Training is enabled, skip the AMP scaler and perform standard backward pass.
+                    self.loss.backward()
+                else:
+                    # Standard Training: Use the AMP scaler for mixed precision training.
+                    self.scaler.scale(self.loss).backward()
+                    
+                # ============================= sparsity training ========================== 
+                if self.args.sr > 0.0:
+                    ignore_bn_list = []
+                    # Sparsity Regularization Temporary
+                    srtmp =  self.args.sr*(1-0.9*self.epoch/self.epochs)
+                    for k, m in self.model.named_modules():
+                        if isinstance(m, Bottleneck):
+                            if m.add:
+                                # BN layer for the first Conv in the containing C2f block (or module before add)
+                                ignore_bn_list.append(k.rsplit(".", 2)[0] + ".cv1.bn")
+                                # BN layer for the second Conv in the Bottleneck module itself
+                                ignore_bn_list.append(k + '.cv2.bn')
+                        # Apply L1 Regularization to the gradient of non-ignored BN weights (gamma).
+                        if isinstance(m, nn.BatchNorm2d) and (k not in ignore_bn_list):
+                            # L1 regularization
+                            m.weight.grad.data.add_(srtmp * torch.sign(m.weight.data))
+                # ============================= sparsity training ========================== 
+
                 if ni - last_opt_step >= self.accumulate:
                     self.optimizer_step()
                     last_opt_step = ni
