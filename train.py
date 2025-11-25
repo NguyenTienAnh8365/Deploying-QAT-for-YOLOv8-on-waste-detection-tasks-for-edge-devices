@@ -25,7 +25,7 @@ def train_model(weights, data, epochs, batch, sr, project, name, imgsz=640, lr0=
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="YOLO Unified Training Script")
-    parser.add_argument("--weights", type=str, default="yolov8n.pt", help="Path to weights or checkpoint")
+    parser.add_argument("--weights", type=str, default="", help="Path to weights or checkpoint")
     parser.add_argument("--data", type=str, required=True, help="Dataset yaml file")
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--batch", type=int, default=32)
