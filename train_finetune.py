@@ -5,7 +5,7 @@ weight = "weights/pruned.pt"
 model = YOLO(weight)
 
 model.train(
-    data="datasets/data.yaml",
+    data="data.yaml",
     epochs=200,
     finetune=True,
     device=0
