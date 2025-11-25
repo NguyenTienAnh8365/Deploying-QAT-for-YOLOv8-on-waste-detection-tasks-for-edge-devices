@@ -290,10 +290,10 @@ def main(opt):
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default=ROOT / 'ultralytics/cfg/datasets/coco.yaml', help='dataset.yaml path')
+    parser.add_argument('--data', type=str, default=ROOT / 'data.yaml', help='dataset.yaml path')
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'runs/train-sparsity/weights/last.pt', help='model.pt path(s)')
     parser.add_argument('--cfg', type=str, default=ROOT / 'ultralytics/cfg/models/v8/yolov8.yaml', help='model.yaml path')
-    parser.add_argument('--model-size', type=str, default='s', help='(yolov8)n, s, m, l or x?')
+    parser.add_argument('--model-size', type=str, default='n', help='(yolov8)n, s, m, l or x?')
     parser.add_argument('--prune-ratio', type=float, default=0.5, help='prune ratio')
     parser.add_argument('--save-dir', type=str, default=ROOT / 'weights', help='pruned model weight save dir')
     opt = parser.parse_args()
