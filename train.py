@@ -14,7 +14,7 @@ MODE_CONFIGS = {
         "weights": "runs/train-normal/weights/best.pt",
         "epochs": 50,
         "batch": 32,
-        "sr": 5e-4,
+        "sr": 0.01,
         "project": ".",
         "name": "train-sparsity",
         "resume": False

@@ -172,7 +172,7 @@ def main(opt):
                 assert mask.sum() > 0, f"bn {name} has no active elements"
                 module.weight.data.mul_(mask)
                 module.bias.data.mul_(mask)
-                remaining_channels = mask.sum().int()    
+                remaining_channels = mask.sum().int()   
             maskbndict[name] = mask
             print(f"|\t{name:<25}{'|':<10}{origin_channels:<20}{'|':<10}{remaining_channels:<20}|")
     print("=" * 94)
@@ -211,6 +211,7 @@ def main(opt):
         assert name_org == name_pruned, f"name_org: {name_org} != name_pruned: {name_pruned}"
         
         # 如果是dfl层, 说明已经结束了
+        # Distribution Focal Loss
         if 'dfl' in name_org:
             break
         

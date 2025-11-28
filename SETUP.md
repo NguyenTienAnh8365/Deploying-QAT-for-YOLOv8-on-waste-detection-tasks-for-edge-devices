@@ -45,7 +45,7 @@ python train.py --mode sparsity --data data.yaml
 ### 3. Pruning <a id="fine-tuning"></a>
 
 ```bash
-python prune.py --data trash.yaml --weights runs/train-sparsity/weights/last.pt --prune-ratio 0.6 --save-dir weights/
+python prune.py --data trash.yaml --weights runs/train-sparsity/weights/last.pt --prune-ratio 0.3 --save-dir weights/
 ```
 
 ### 4. Fine-Tuning <a id="fine-tuning"></a>
