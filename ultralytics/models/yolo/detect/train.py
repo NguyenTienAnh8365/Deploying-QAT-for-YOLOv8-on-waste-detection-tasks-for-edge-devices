@@ -155,7 +155,13 @@ class DetectionTrainer(BaseTrainer):
         Returns:
             (DetectionModel): YOLO detection model.
         """
-        model = DetectionModel(cfg, nc=self.data["nc"], ch=self.data["channels"], verbose=verbose and RANK == -1)
+        # ===========================================================================
+        if self.finetune:
+            assert maskbndict is not None, "maskbndict must be stored in weights so that it can be loaded for finetuing"
+            model = DetectionModelPruned(maskbndict, cfg, nc=self.data['nc'], verbose=verbose and RANK == -1)
+        else:
+            model = DetectionModel(cfg, nc=self.data['nc'], verbose=verbose and RANK == -1)
+        # ===========================================================================
         if weights:
             model.load(weights)
         return model

@@ -123,6 +123,7 @@ class BaseTrainer:
         """
         self.hub_session = overrides.pop("session", None)  # HUB
         self.args = get_cfg(cfg, overrides)
+        self.finetune = self.args.finetune
         self.check_resume(overrides)
         self.device = select_device(self.args.device)
         # Update "-1" devices so post-training val does not repeat search
