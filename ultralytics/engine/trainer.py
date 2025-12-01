@@ -203,6 +203,13 @@ class BaseTrainer:
             callbacks.add_integration_callbacks(self)
             # Start console logging immediately at trainer initialization
             self.run_callbacks("on_pretrain_routine_start")
+        global gamma_coco_ref
+        try:
+            self.gamma_coco_ref = torch.load("gamma_coco_ref.pt")
+            print("Loaded gamma_coco_ref.pt for Domain-Adaptive Sparsity (DAST)")
+        except:
+            self.gamma_coco_ref = None
+            print("Warning: Không tìm thấy gamma_coco_ref.pt → sẽ dùng λ cố định")
 
     def add_callback(self, event: str, callback):
         """Append the given callback to the event's callback list."""
@@ -461,8 +468,15 @@ class BaseTrainer:
                                 ignore_bn_list.append(k + '.cv2.bn')
                         # Apply L1 Regularization to the gradient of non-ignored BN weights (gamma).
                         if isinstance(m, nn.BatchNorm2d) and (k not in ignore_bn_list):
+                            r_l = 1.0
+                            if self.gamma_coco_ref is not None and k in self.gamma_coco_ref:
+                                gamma_coco = self.gamma_coco_ref[k].to(m.weight.data.device)
+                                r_l = m.weight.data.abs.mean() / (gamma_coco.mean() + 1e-8)
+
+                            lamdba_l = srtmp*(1.0 / (r_l + 0.1))         
+                            m.weight.grad.data.add_(lamdba_l * torch.sign(m.weight.data))            
                             # L1 regularization
-                            m.weight.grad.data.add_(srtmp * torch.sign(m.weight.data))
+                            # m.weight.grad.data.add_(srtmp * torch.sign(m.weight.data))
                 # ============================= sparsity training ========================== 
 
                 if ni - last_opt_step >= self.accumulate:

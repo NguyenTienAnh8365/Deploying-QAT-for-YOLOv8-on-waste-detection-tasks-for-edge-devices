@@ -34,5 +34,5 @@ def visualize_bn_gamma_distribution(model):
 if __name__ == '__main__':
     # weight = "runs/train-norm/weights/best.pt"
     weight = "runs/train-sparsity/weights/last.pt"
-    model = YOLO(weight)
+    model = YOLO("yolov8n.pt")
     visualize_bn_gamma_distribution(model)
