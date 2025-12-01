@@ -471,7 +471,7 @@ class BaseTrainer:
                             r_l = 1.0
                             if self.gamma_coco_ref is not None and k in self.gamma_coco_ref:
                                 gamma_coco = self.gamma_coco_ref[k].to(m.weight.data.device)
-                                r_l = m.weight.data.abs.mean() / (gamma_coco.mean() + 1e-8)
+                                r_l = m.weight.data.abs().mean() / (gamma_coco.abs().mean() + 1e-8)
 
                             lamdba_l = srtmp*(1.0 / (r_l + 0.1))         
                             m.weight.grad.data.add_(lamdba_l * torch.sign(m.weight.data))            
