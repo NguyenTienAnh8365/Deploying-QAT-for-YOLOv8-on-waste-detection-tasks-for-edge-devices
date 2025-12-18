@@ -11,7 +11,7 @@ MODE_CONFIGS = {
         "resume": False
     },
     "sparsity": {
-        "weights": "runs/train-normal/weights/best.pt",
+        "weights": "weights/best.pt",
         "epochs": 50,
         "batch": 32,
         "sr": 0.01,
