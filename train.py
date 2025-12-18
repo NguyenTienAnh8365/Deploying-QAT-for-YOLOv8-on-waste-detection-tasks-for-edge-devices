@@ -3,10 +3,10 @@ from ultralytics import YOLO
 
 MODE_CONFIGS = {
     "standard": {
-        "weights": "yolov8n.pt",
+        "weights": "weights/yolov8.pt",
         "epochs": 200,
         "batch": 32,
-        "project": ".",
+        "project": "runs/",
         "name": "train-normal",
         "resume": False
     },
@@ -15,7 +15,7 @@ MODE_CONFIGS = {
         "epochs": 50,
         "batch": 32,
         "sr": 0.01,
-        "project": ".",
+        "project": "runs/",
         "name": "train-sparsity",
         "resume": False
     },
@@ -23,7 +23,8 @@ MODE_CONFIGS = {
         "weights": "weights/pruned.pt",
         "epochs": 150,
         "batch": 32,
-        "project": ".",
+        "sr": 0.0,
+        "project": "runs/",
         "name": "train-finetune",
         "resume": False
     }
@@ -40,8 +41,8 @@ def merge_configs(defaults, overrides):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", type=str, choices=MODE_CONFIGS.keys(), required=True)
-    parser.add_argument("--data", type=str, required=True)
+    parser.add_argument("--mode", type=str, choices=MODE_CONFIGS.keys(), default="finetune")
+    parser.add_argument("--data", type=str, default="data.yaml")
 
     parser.add_argument("--weights", type=str, default=None)
     parser.add_argument("--epochs", type=int, default=None)

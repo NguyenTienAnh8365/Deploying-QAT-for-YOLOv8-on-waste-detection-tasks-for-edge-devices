@@ -33,6 +33,6 @@ def visualize_bn_gamma_distribution(model):
 
 if __name__ == '__main__':
     # weight = "runs/train-normal/weights/best.pt"
-    weight = "runs/train-sparsity3/weights/last.pt"
+    weight = "runs/train-sparsity/weights/last.pt"
     model = YOLO("yolov8n.pt")
     visualize_bn_gamma_distribution(model)

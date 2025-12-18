@@ -2,8 +2,8 @@ from ultralytics import YOLO
 import torch
 import time
 
-# weight = "/home/ubuntu/dqh/ViTrashNet/runs/train-norm/weights/best.pt"
-weight = "/home/ubuntu/dqh/ViTrashNet/weights/pruned.pt"
+# weight = "weights/best.pt"
+weight = "weights/orignal.pt"
 model = YOLO(weight)
 
 device = 'cpu'
@@ -28,7 +28,7 @@ avg_latency = sum(latencies)/len(latencies)
 print(f"Average Latency per image (CPU): {avg_latency*1000:.2f} ms")
 print(f"Approx FPS: {1/avg_latency:.2f}")
 
-metrics = model.val(data="data.yaml", batch=32, device=device)
+metrics = model.val(data="data.yaml", batch=32, device=device, split="test")
 
 print("=== Evaluation Metrics ===")
 print(f"Precision: {metrics['metrics/precision']:.4f}")

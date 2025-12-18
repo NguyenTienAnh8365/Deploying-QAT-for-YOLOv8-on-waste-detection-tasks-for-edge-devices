@@ -238,6 +238,7 @@ CFG_BOOL_KEYS = frozenset(
         "nms",
         "profile",
         "multi_scale",
+        "finetune"
     }
 )
 
@@ -305,9 +306,17 @@ def get_cfg(
     # Merge overrides
     if overrides:
         overrides = cfg2dict(overrides)
+
+        # =================================================
+        finetune = overrides.pop('finetune', None)
+        # =================================================
+
         if "save_dir" not in cfg:
             overrides.pop("save_dir", None)  # special override keys to ignore
         check_dict_alignment(cfg, overrides)
+        # =================================================
+        overrides['finetune'] = finetune
+        # =================================================
         cfg = {**cfg, **overrides}  # merge cfg and overrides dicts (prefer overrides)
 
     # Special handling for numeric project/name
@@ -321,6 +330,9 @@ def get_cfg(
     # Type and Value checks
     check_cfg(cfg)
 
+    # ==================================
+    cfg['finetune'] = finetune
+    # ==================================
     # Return instance
     return IterableSimpleNamespace(**cfg)
 
