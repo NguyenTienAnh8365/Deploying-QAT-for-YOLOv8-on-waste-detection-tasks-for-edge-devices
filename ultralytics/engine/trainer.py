@@ -447,7 +447,7 @@ class BaseTrainer:
                     self.tloss = self.loss_items if self.tloss is None else (self.tloss * i + self.loss_items) / (i + 1)
 
                 # Backward
-                if self.args.sr > 0.0:
+                if self.sr > 0.0:
                     # Sparsity Training is enabled, skip the AMP scaler and perform standard backward pass.
                     self.loss.backward()
                 else:
@@ -455,10 +455,10 @@ class BaseTrainer:
                     self.scaler.scale(self.loss).backward()
 
                 # ============================= sparsity training ========================== 
-                if self.args.sr > 0.0:
+                if self.sr > 0.0:
                     ignore_bn_list = []
                     # Sparsity Regularization Temporary
-                    srtmp = self.args.sr * (1 - 0.9 * self.epoch / self.epochs)
+                    srtmp = self.sr * (1 - 0.9 * self.epoch / self.epochs)
                     for k, m in self.model.named_modules():
                         if isinstance(m, Bottleneck):
                             if m.add:
@@ -738,9 +738,11 @@ class BaseTrainer:
 
     def optimizer_step(self):
         """Perform a single step of the training optimizer with gradient clipping and EMA update."""
-        if self.args.sr > 0.0:
+        # ============================= disable scaler/grad clip =============================
+        if self.sr > 0.0:
             self.optimizer.step()
             self.optimizer.zero_grad()
+        # ============================= disable scaler/grad clip =============================
         else:
             self.scaler.unscale_(self.optimizer)  # unscale gradients
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10.0)
