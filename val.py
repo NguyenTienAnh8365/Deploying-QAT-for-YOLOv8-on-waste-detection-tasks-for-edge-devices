@@ -6,7 +6,7 @@ import time
 weight = "weights/orignal.pt"
 model = YOLO(weight)
 
-device = 'cpu'
+device = 'cuda'
 model.model.to(device)
 
 dummy_img = torch.randn(1, 3, 640, 640).to(device)

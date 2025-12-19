@@ -770,7 +770,9 @@ class Model(torch.nn.Module):
             args.pop("sr")
         # ====================================================
         self.trainer = (trainer or self._smart_load("trainer"))(overrides=args, _callbacks=self.callbacks)
+        # ====================================================
         self.trainer.sr = sr
+        # ====================================================
         if not args.get("resume"):  # manually set model only if not resuming
             # ========================================================================================================
             maskbndict = self.ckpt.get('maskbndict', None) if self.ckpt else None

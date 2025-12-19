@@ -4,7 +4,7 @@ model = YOLO("weights/yolov8s.pt")
 
 model.train(
     sr=0,
-    data="ultralytics/cfg/datasets/coco.yaml",
+    data="data.yaml",
     epochs=200,
     project='.',
     name='runs/train-normal',

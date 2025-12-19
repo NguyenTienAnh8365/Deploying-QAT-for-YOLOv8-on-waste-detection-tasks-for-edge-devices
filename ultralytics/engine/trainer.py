@@ -270,15 +270,12 @@ class BaseTrainer:
         self.model = self.model.to(self.device)
         self.set_model_attributes()
 
+        # ===========================================================================
+        self.sr = float(getattr(self, 'sr', 0.0))
+        # ===========================================================================
+
         # Compile model
         self.model = attempt_compile(self.model, device=self.device, mode=self.args.compile)
-
-        if hasattr(self.args, 'sr') and self.args.sr > 0.0:
-            LOGGER.info(colorstr('yellow', '⚠️ Sparsity Training Mode Activated! (sr={:.5f})'.format(self.args.sr)))
-            LOGGER.info(colorstr('yellow', '⚠️ AMP Scaler Disabled for Backward Pass in this mode.'))
-        else:
-            sr_val = self.args.sr if hasattr(self.args, 'sr') else 0.0
-            LOGGER.info(colorstr('green', f'✅ Standard Training Mode. (sr={sr_val})'))
 
         # Freeze layers
         freeze_list = (
@@ -302,6 +299,16 @@ class BaseTrainer:
                     "See ultralytics.engine.trainer for customization of frozen layers."
                 )
                 v.requires_grad = True
+
+        if self.sr:
+            self.args.amp = False
+
+        LOGGER.info(f"sr: {self.sr}")
+        if self.sr > 0.0:
+            LOGGER.info(colorstr('yellow', f'⚠️ Sparsity Training Mode Activated! (sr={self.sr:.5f})'))
+            LOGGER.info(colorstr('yellow', '⚠️ AMP Scaler Disabled for Backward Pass in this mode.'))
+        else:
+            LOGGER.info(colorstr('green', f'✅ Standard Training Mode. (sr={self.sr})'))
 
         # Check AMP
         self.amp = torch.tensor(self.args.amp).to(self.device)  # True or False
@@ -446,12 +453,12 @@ class BaseTrainer:
                 else:
                     # Standard Training: Use the AMP scaler for mixed precision training.
                     self.scaler.scale(self.loss).backward()
-                    
+
                 # ============================= sparsity training ========================== 
                 if self.args.sr > 0.0:
                     ignore_bn_list = []
                     # Sparsity Regularization Temporary
-                    srtmp =  self.args.sr*(1-0.9*self.epoch/self.epochs)
+                    srtmp = self.args.sr * (1 - 0.9 * self.epoch / self.epochs)
                     for k, m in self.model.named_modules():
                         if isinstance(m, Bottleneck):
                             if m.add:
@@ -499,6 +506,26 @@ class BaseTrainer:
                 self.run_callbacks("on_train_batch_end")
 
             self.lr = {f"lr/pg{ir}": x["lr"] for ir, x in enumerate(self.optimizer.param_groups)}  # for loggers
+
+            # ============================================================
+            if RANK in {-1, 0}:
+                bn_weights = []
+                for m in self.model.modules():
+                    if isinstance(m, nn.BatchNorm2d):
+                        bn_weights.append(m.weight.data.abs().flatten())
+
+                if bn_weights:
+                    all_bn_weights = torch.cat(bn_weights)
+
+                    thresh = 1e-3
+                    sparse_count = (all_bn_weights < thresh).sum().item()
+                    total_count = all_bn_weights.shape[0]
+                    sparsity_pct = 100 * sparse_count / total_count
+
+                    LOGGER.info(
+                        f"{colorstr('Sparsity:')} Epoch {epoch + 1}: {sparsity_pct:.2f}% của BN gamma < {thresh}")
+                    # self.metrics["train/bn_sparsity"] = sparsity_pct
+            # ============================================================
 
             self.run_callbacks("on_train_epoch_end")
             if RANK in {-1, 0}:
@@ -581,7 +608,7 @@ class BaseTrainer:
             memory = torch.cuda.memory_reserved()
             if fraction:
                 total = torch.cuda.get_device_properties(self.device).total_memory
-        return ((memory / total) if total > 0 else 0) if fraction else (memory / 2**30)
+        return ((memory / total) if total > 0 else 0) if fraction else (memory / 2 ** 30)
 
     def _clear_memory(self, threshold: float | None = None):
         """Clear accelerator memory by calling garbage collector and emptying cache."""
@@ -842,13 +869,14 @@ class BaseTrainer:
 
                 resume = True
                 self.args = get_cfg(ckpt_args)
+                self.sr = getattr(self.args, 'sr', 0.0)
                 self.args.model = self.args.resume = str(last)  # reinstate model
                 for k in (
-                    "imgsz",
-                    "batch",
-                    "device",
-                    "close_mosaic",
-                    "augmentations",
+                        "imgsz",
+                        "batch",
+                        "device",
+                        "close_mosaic",
+                        "augmentations",
                 ):  # allow arg updates to reduce memory or update device on resume
                     if k in overrides:
                         setattr(self.args, k, overrides[k])
