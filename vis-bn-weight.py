@@ -13,43 +13,6 @@ def extract_bn_gamma(model):
             gamma_weights.append(m.weight.detach().cpu().numpy())
     return np.concatenate(gamma_weights)
 
-def visualize_two_models(weight_normal, weight_sparse, save_path):
-    model_normal = YOLO(weight_normal).model
-    model_sparse = YOLO(weight_sparse).model
-
-    gamma_normal = extract_bn_gamma(model_normal)
-    gamma_sparse = extract_bn_gamma(model_sparse)
-
-    plt.figure(figsize=(8, 5))
-
-    plt.hist(
-        gamma_normal,
-        bins=200,
-        density=True,
-        alpha=0.6,
-        color="black",      
-        label="Normal Training"
-    )
-
-    plt.hist(
-        gamma_sparse,
-        bins=200,
-        density=True,
-        alpha=0.6,
-	color="crimson",
-        label="Sparsity Training"
-    )
-
-    plt.xlim(0, 6)
-    plt.xlabel("BN Gamma")
-    plt.ylabel("Density")
-    plt.title("BN Gamma Distribution Shift")
-    plt.legend()
-    plt.grid(True)
-
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150)
-    plt.show()
 
 def visualize_bn_gamma_distribution(model):
     """
@@ -79,14 +42,104 @@ def visualize_bn_gamma_distribution(model):
     # plt.savefig('bn-weight-distribution-original.jpg')
     plt.savefig('bn-weight-distribution-sparsity.jpg')
 
+def plot_bn_gamma_hist(gamma_normal_vals, gamma_sparse_vals, save_path):
+    plt.figure(figsize=(8, 5))
+
+    plt.hist(
+        gamma_normal_vals,
+        bins=200,
+        density=True,
+        alpha=0.6,
+        color="black",
+        label="Normal Training"
+    )
+
+    plt.hist(
+        gamma_sparse_vals,
+        bins=200,
+        density=True,
+        alpha=0.6,
+	color="crimson",
+        label="Sparsity Training"
+    )
+
+    plt.xlim(0, 6)
+    plt.xlabel("BN Gamma")
+    plt.ylabel("Density")
+    plt.title("BN Gamma Distribution Shift")
+    plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    plt.show()
+
+def plot_hist_and_heatmap(gamma_normal_vals, gamma_sparse_vals, save_path):
+    bins = 200
+    x_min, x_max = -6, 6
+
+    # Compute density histograms
+    hist_normal, _ = np.histogram(
+        gamma_normal_vals, bins=bins, range=(x_min, x_max), density=True
+    )
+    hist_sparse, _ = np.histogram(
+        gamma_sparse_vals, bins=bins, range=(x_min, x_max), density=True
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 3), sharey=True)
+
+    # Heatmap - Normal
+    im1 = axes[0].imshow(
+        hist_normal[np.newaxis, :],
+        aspect="auto",
+        cmap="hot",
+        extent=[x_min, x_max, 0, 1]
+    )
+    axes[0].set_title("Normal Training")
+    axes[0].set_yticks([])
+    axes[0].set_xlabel("BN Gamma")
+
+    # Heatmap - Sparsity
+    im2 = axes[1].imshow(
+        hist_sparse[np.newaxis, :],
+        aspect="auto",
+        cmap="hot",
+        extent=[x_min, x_max, 0, 1]
+    )
+    axes[1].set_title("Sparsity Training")
+    axes[1].set_yticks([])
+    axes[1].set_xlabel("BN Gamma")
+
+    # Shared colorbar
+    fig.colorbar(im2, ax=axes, label="Density")
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    plt.show()
+
+
 if __name__ == '__main__':
     # weight = "weights/orignal.pt"
     # weight = "runs/train-sparsity2/weights/last.pt"
     # model = YOLO(weight)
     # visualize_bn_gamma_distribution(model)
+    weight_normal = "weights/original.pt"
+    weight_sparse = "runs/train-sparsity/weights/last.pt"
 
-    visualize_two_models(
-        weight_normal="weights/original.pt",
-        weight_sparse="runs/train-sparsity/weights/last.pt",
-        save_path="assets/bn_gamma_comparison.jpg"
+    model_normal = YOLO(weight_normal).model
+    model_sparse = YOLO(weight_sparse).model
+
+    gamma_normal = extract_bn_gamma(model_normal)
+    gamma_sparse = extract_bn_gamma(model_sparse)
+
+    plot_bn_gamma_hist(
+        gamma_normal,
+        gamma_sparse,
+        save_path="assets/bn_gamma_hist.jpg"
+    )
+
+    plot_hist_and_heatmap(
+        gamma_normal,
+        gamma_sparse,
+        save_path="assets/bn_gamma_hist_heatmap.jpg"
     )
