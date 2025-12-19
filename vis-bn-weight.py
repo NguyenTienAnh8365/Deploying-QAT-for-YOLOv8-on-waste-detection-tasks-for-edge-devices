@@ -75,7 +75,7 @@ if __name__ == '__main__':
     # visualize_bn_gamma_distribution(model)
 
     visualize_two_models(
-        weight_normal="weights/orignal.pt",
+        weight_normal="weights/original.pt",
         weight_sparse="runs/train-sparsity/weights/last.pt",
         save_path="assets/bn_gamma_comparison.jpg"
     )
