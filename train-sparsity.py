@@ -1,6 +1,6 @@
 from ultralytics import YOLO
 
-model = YOLO("weights/orignal.pt")
+model = YOLO("weights/original.pt")
 
 model.train(
     sr=1e-2,

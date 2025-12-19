@@ -14,27 +14,38 @@ def extract_bn_gamma(model):
     return np.concatenate(gamma_weights)
 
 def visualize_two_models(weight_normal, weight_sparse, save_path):
-    # Load models
     model_normal = YOLO(weight_normal).model
     model_sparse = YOLO(weight_sparse).model
 
-    # Extract BN gamma
     gamma_normal = extract_bn_gamma(model_normal)
     gamma_sparse = extract_bn_gamma(model_sparse)
 
-    # Plot side-by-side
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
+    plt.figure(figsize=(8, 5))
 
-    axes[0].hist(gamma_normal, bins=100, alpha=0.75)
-    axes[0].set_title("Normal Training")
-    axes[0].set_xlabel("BN Gamma")
-    axes[0].set_ylabel("Frequency")
-    axes[0].grid(True)
+    plt.hist(
+        gamma_normal,
+        bins=200,
+        density=True,
+        alpha=0.6,
+        color="black",      
+        label="Normal Training"
+    )
 
-    axes[1].hist(gamma_sparse, bins=100, alpha=0.75)
-    axes[1].set_title("Sparsity Training")
-    axes[1].set_xlabel("BN Gamma")
-    axes[1].grid(True)
+    plt.hist(
+        gamma_sparse,
+        bins=200,
+        density=True,
+        alpha=0.6,
+	color="crimson",
+        label="Sparsity Training"
+    )
+
+    plt.xlim(0, 6)
+    plt.xlabel("BN Gamma")
+    plt.ylabel("Density")
+    plt.title("BN Gamma Distribution Shift")
+    plt.legend()
+    plt.grid(True)
 
     plt.tight_layout()
     plt.savefig(save_path, dpi=150)
