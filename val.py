@@ -3,7 +3,8 @@ import torch
 import time
 
 # weight = "weights/best.pt"
-weight = "weights/orignal.pt"
+# weight = "weights/orignal.pt"
+weight = "weights/pruned_05.pt"
 model = YOLO(weight)
 
 device = 'cuda'
@@ -25,14 +26,13 @@ for _ in range(n_runs):
     latencies.append(latency)
 
 avg_latency = sum(latencies)/len(latencies)
-print(f"Average Latency per image (CPU): {avg_latency*1000:.2f} ms")
+print(f"Average Latency per image: {avg_latency*1000:.2f} ms")
 print(f"Approx FPS: {1/avg_latency:.2f}")
 
 metrics = model.val(data="data.yaml", batch=32, device=device, split="test")
 
 print("=== Evaluation Metrics ===")
-print(f"Precision: {metrics['metrics/precision']:.4f}")
-print(f"Recall:    {metrics['metrics/recall']:.4f}")
-print(f"mAP@50:   {metrics['metrics/mAP50']:.4f}")
-print(f"mAP@50-95:{metrics['metrics/mAP50-95']:.4f}")
-print(f"FLOPs:    {model.flops / 1e9:.2f} GFLOPs")
+print(f"Precision:  {metrics.box.mp:.4f}")
+print(f"Recall:     {metrics.box.mr:.4f}")
+print(f"mAP@50:     {metrics.box.map50:.4f}")
+print(f"mAP@50-95:  {metrics.box.map:.4f}")

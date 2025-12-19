@@ -29,10 +29,11 @@ def visualize_bn_gamma_distribution(model):
     plt.xlabel("Gamma Value")
     plt.ylabel("Frequency")
     plt.grid(True)
-    plt.savefig('bn-weight-distribution.jpg')
+    # plt.savefig('bn-weight-distribution-original.jpg')
+    plt.savefig('bn-weight-distribution-sparsity.jpg')
 
 if __name__ == '__main__':
-    # weight = "runs/train-normal/weights/best.pt"
-    weight = "runs/train-sparsity/weights/last.pt"
-    model = YOLO("yolov8n.pt")
+    # weight = "weights/orignal.pt"
+    weight = "runs/train-sparsity2/weights/last.pt"
+    model = YOLO(weight)
     visualize_bn_gamma_distribution(model)
