@@ -27,21 +27,21 @@ Main scripts:
 - Base deps:
 
 ```bash
-pip install -r requirements.txt
-pip install -e .
-```
+# PyTorch (CUDA 12.8)
+pip install torch==2.10.0+cu128 torchvision==0.25.0+cu128 --index-url https://download.pytorch.org/whl/cu128
 
-- NVIDIA QAT/export deps:
+# Ultralytics và ONNX
+pip install "ultralytics==8.0.228" onnx onnxsim onnxscript
 
-```bash
-pip install pytorch-quantization --extra-index-url https://pypi.ngc.nvidia.com
-pip install onnx onnxscript
-```
+# NVIDIA pytorch-quantization (bắt buộc đúng version để load QAT weights)
+pip install --upgrade setuptools wheel
+pip install --no-cache-dir pytorch-quantization==2.1.2 --extra-index-url https://pypi.ngc.nvidia.com
 
-- TensorRT engine build (optional but recommended for deployment):
+# Downgrade numpy (pytorch-quantization yêu cầu numpy < 2.0)
+pip install "numpy<2.0"
 
-```bash
-pip install tensorrt
+# TensorRT
+pip install tensorrt==10.0.1 --extra-index-url https://pypi.nvidia.com
 ```
 
 If you use `trtexec` instead of Python API, install TensorRT system package and ensure `trtexec` is in `PATH`.
