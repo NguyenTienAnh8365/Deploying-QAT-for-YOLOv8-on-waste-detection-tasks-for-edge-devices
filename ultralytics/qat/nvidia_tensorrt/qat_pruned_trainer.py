@@ -211,12 +211,16 @@ class QuantizationPrunedTrainer(DetectionTrainer):
     """
 
     def __init__(self, cfg=DEFAULT_CFG, overrides=None, _callbacks=None):
+        # Pop QAT-specific keys before super().__init__ — get_cfg's
+        # check_dict_alignment rejects keys not in DEFAULT_CFG_DICT.
+        overrides = overrides or {}
+        recalib_every = overrides.pop('recalib_every', 1)
+        pruned_checkpoint = overrides.pop('pruned_checkpoint', None)
         super().__init__(cfg, overrides, _callbacks)
         self.qat = 'nvidia'
-        self.recalib_every = overrides.get('recalib_every', 1) if overrides else 1
+        self.recalib_every = recalib_every
         self._bn_hook_handles = []
-        # Đường dẫn tới pruned checkpoint (chứa maskbndict + pruned config)
-        self.pruned_checkpoint = overrides.get('pruned_checkpoint', None) if overrides else None
+        self.pruned_checkpoint = pruned_checkpoint
 
     @staticmethod
     def _reset_ckpt_args(args):
