@@ -37,6 +37,8 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 def main(opt):
     weights, prune_ratio, cfg, model_size, save_dir = opt.weights, opt.prune_ratio, opt.cfg, opt.model_size, opt.save_dir
+    if isinstance(weights, list):
+        weights = weights[0]
     model = AutoBackend(weights, fuse=False)
     model.eval()
     # =========================================step1=========================================

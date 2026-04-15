@@ -17,9 +17,34 @@ from copy import deepcopy
 from pathlib import Path
 from pytorch_quantization import nn as quant_nn
 from pytorch_quantization import quant_modules
+from pytorch_quantization.nn.modules.tensor_quantizer import TensorQuantizer
 from ultralytics.nn.tasks_pruned import DetectionModelPruned
 from ultralytics.nn.modules.head_pruned import DetectPruned
 from .quant_ops_pruned import quant_module_change_pruned
+
+
+def _sanitize_quantizer_amax(model, default_amax=1.0, verbose=True):
+    """Fix _amax values that are NaN/Inf/≤0 — TensorRT rejects non-positive scales.
+
+    Nguyên nhân: trong QAT calibration, vài quantizer có thể không được kích hoạt
+    (đặc biệt ở head branches của pruned model) → _amax ở trạng thái init (0 hoặc NaN).
+    """
+    fixed, disabled = 0, 0
+    for name, module in model.named_modules():
+        if not isinstance(module, TensorQuantizer):
+            continue
+        amax = getattr(module, "_amax", None)
+        if amax is None:
+            continue
+        bad = ~torch.isfinite(amax) | (amax <= 0)
+        if bad.any():
+            fixed += int(bad.sum().item())
+            amax.data[bad] = default_amax
+            if verbose:
+                print(f"[sanitize] {name}: fixed {int(bad.sum().item())}/{amax.numel()} bad amax")
+    if verbose:
+        print(f"[sanitize] Total quantizer entries fixed: {fixed}, disabled: {disabled}")
+    return model
 
 
 def export_onnx_pruned(pruned_checkpoint, qat_weight, format="onnx", verbose=True):
@@ -59,13 +84,19 @@ def export_onnx_pruned(pruned_checkpoint, qat_weight, format="onnx", verbose=Tru
     quant_module_change_pruned(model)
 
     # ── Load QAT-trained weights ────────────────────────────────────────
+    # Ultralytics 8.3+ saves ckpt['model']=None, real weights in ckpt['ema'].
     ckpt = torch.load(qat_weight, map_location='cpu', weights_only=False)
-    if isinstance(ckpt, dict) and 'model' in ckpt:
-        state_dict = ckpt['model'].float().state_dict()
+    if isinstance(ckpt, dict):
+        model_obj = ckpt.get('model') or ckpt.get('ema')
+        if model_obj is None:
+            raise ValueError(f"No model/ema in {qat_weight}. Keys: {list(ckpt.keys())}")
+        state_dict = model_obj.float().state_dict()
     else:
-        state_dict = ckpt
+        state_dict = ckpt.float().state_dict() if hasattr(ckpt, 'float') else ckpt
     model.load_state_dict(state_dict, strict=False)
     model.eval()
+
+    _sanitize_quantizer_amax(model, default_amax=1.0, verbose=verbose)
 
     # ── Set export mode cho DetectPruned head ──────────────────────────
     for m in model.modules():
@@ -73,18 +104,28 @@ def export_onnx_pruned(pruned_checkpoint, qat_weight, format="onnx", verbose=Tru
             m.export = True
             m.format = format
 
+    # ── Move model + dummy input to CUDA ────────────────────────────────
+    # Quantizer _amax buffers loaded from state_dict có thể nằm trên cuda;
+    # phải đồng bộ device để tránh "scale on cuda, weight on cpu".
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
+    dummy_input = torch.randn(1, 3, 640, 640, device=device)
+
     # ── Export to ONNX ──────────────────────────────────────────────────
     output_path = Path(qat_weight).with_suffix(".tensorrt.onnx")
-    dummy_input = torch.randn(1, 3, 640, 640)
 
+    # Force TorchScript-based exporter (dynamo=False).
+    # Torch 2.10 default dynamo exporter uses torch.export which can't trace
+    # pytorch_quantization's .item() in _fb_fake_quant (data-dependent symbolic).
     torch.onnx.export(
         model,
         dummy_input,
         str(output_path),
         verbose=False,
-        opset_version=14,
+        opset_version=13,
         input_names=["image"],
-        output_names=["output"]
+        output_names=["output"],
+        dynamo=False,
     )
 
     print(f"\n[QAT-Pruned] Exported to: {output_path}")

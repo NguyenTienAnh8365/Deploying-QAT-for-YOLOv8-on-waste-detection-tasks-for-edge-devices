@@ -20,7 +20,7 @@ from ultralytics.models.yolo.detect.train import DetectionTrainer
 from ultralytics.models.yolo.detect.val import DetectionValidator
 from ultralytics.nn.tasks_pruned import DetectionModelPruned
 from ultralytics.utils import DEFAULT_CFG, LOGGER, RANK, TQDM, __version__, colorstr, callbacks
-from ultralytics.utils.torch_utils import de_parallel, is_parallel, ModelEMA
+from ultralytics.utils.torch_utils import unwrap_model as de_parallel, is_parallel, ModelEMA
 from datetime import datetime
 import logging
 from torch import nn, optim
@@ -132,6 +132,11 @@ def cal_model(model, data_loader, device, num_batch=256):
 # BN freeze hook (giữ nguyên — model-agnostic)
 # =============================================================================
 
+def _bn_eval_hook(module, input):
+    """Top-level (picklable) BN forward pre-hook — giữ BN ở eval mode."""
+    module.eval()
+
+
 def _register_bn_freeze_hook(model):
     """
     Đăng ký forward pre-hook để giữ BatchNorm ở eval mode trong QAT.
@@ -142,6 +147,9 @@ def _register_bn_freeze_hook(model):
 
     BN trong eval mode dùng running_mean/running_var đã calibrate
     thay vì batch statistics bị nhiễu bởi fake quantization noise.
+
+    Note: hook phải là top-level function (không phải closure) để pickle
+    được khi save_model() deepcopy EMA.
     """
     bn_layers = [
         m for m in model.modules()
@@ -149,10 +157,6 @@ def _register_bn_freeze_hook(model):
     ]
 
     handles = []
-
-    def _bn_eval_hook(module, input):
-        module.eval()
-
     for bn in bn_layers:
         handle = bn.register_forward_pre_hook(_bn_eval_hook)
         handles.append(handle)
@@ -244,10 +248,8 @@ class QuantizationPrunedTrainer(DetectionTrainer):
             weights: Path tới finetuned weight (nếu khác pruned checkpoint).
                      Nếu None, dùng weights từ pruned checkpoint.
         """
-        if RANK in (-1, 0):
-            self.test_loader = self.get_dataloader(
-                self.testset, batch_size=16 * 2, rank=-1, mode='val'
-            )
+        # test_loader được tạo trong _setup_train sau khi model sẵn sàng;
+        # không tạo ở đây vì self.model còn là str yaml path → build_dataset crash.
 
         # ── Load pruned checkpoint ──────────────────────────────────────────
         pruned_ckpt_path = self.pruned_checkpoint
@@ -287,11 +289,18 @@ class QuantizationPrunedTrainer(DetectionTrainer):
         )
 
         # Lấy state dict từ pruned model hoặc finetuned weight
+        # Ultralytics 8.3+ lưu ckpt['model']=None, weights nằm ở ckpt['ema'].
         if weights and weights != pruned_ckpt_path:
             LOGGER.info(f"[QAT-Pruned] Loading finetuned weights: {weights}")
             ft_ckpt = torch.load(weights, map_location='cpu', weights_only=False)
-            if isinstance(ft_ckpt, dict) and 'model' in ft_ckpt:
-                original_state_dict = ft_ckpt['model'].float().state_dict()
+            if isinstance(ft_ckpt, dict):
+                model_obj = ft_ckpt.get('model') or ft_ckpt.get('ema')
+                if model_obj is None:
+                    raise ValueError(
+                        f"[QAT-Pruned] Không tìm thấy model/ema trong {weights}. "
+                        f"Keys: {list(ft_ckpt.keys())}"
+                    )
+                original_state_dict = model_obj.float().state_dict()
             else:
                 original_state_dict = ft_ckpt.float().state_dict()
         else:
@@ -301,10 +310,15 @@ class QuantizationPrunedTrainer(DetectionTrainer):
         quant_modules.initialize()
 
         if RANK in (-1, 0):
+            # build_dataset đọc self.model.stride; self.model còn là str yaml
+            # → tạm set None để fallback gs=32 (stride lớn nhất của YOLOv8).
+            _saved_model = self.model
+            self.model = None
             # Technique 2: dùng train data cho calibration (đa dạng hơn val)
             calib_loader = self.get_dataloader(
-                self.trainset, batch_size=16 * 2, rank=-1, mode='val'
+                self.data["train"], batch_size=16 * 2, rank=-1, mode='val'
             )
+            self.model = _saved_model
             LOGGER.info(
                 f"[QAT-Pruned] Calibrating on train set "
                 f"({len(calib_loader.dataset)} images, 512 batches) — entropy method"
@@ -352,7 +366,7 @@ class QuantizationPrunedTrainer(DetectionTrainer):
             eta_min=self.args.lr0 * 0.01
         )
 
-    def _setup_train(self, world_size):
+    def _setup_train(self, world_size=None):
         """Setup training với QAT-specific config.
 
         Giữ nguyên logic từ bản gốc:
@@ -363,6 +377,13 @@ class QuantizationPrunedTrainer(DetectionTrainer):
           - Freeze layers theo --freeze parameter
         """
         self.args.warmup_epochs = 0
+
+        # QAT không dùng sparsity regularization; BaseTrainer._do_train đọc self.sr.
+        self.sr = 0.0
+
+        # Resolve world_size — new BaseTrainer sets self.world_size internally
+        if world_size is None:
+            world_size = getattr(self, 'world_size', 1)
 
         # ── LR scaling nội bộ ────────────────────────────────────────────────
         # lr0 /= 100 → CosineAnnealingLR bắt đầu từ lr0/100
@@ -385,6 +406,8 @@ class QuantizationPrunedTrainer(DetectionTrainer):
         freeze_layer_names = [
             f'model.{x}.' for x in freeze_list
         ] + always_freeze_names
+        # Ultralytics 8.3+ _model_train() reads self.freeze_layer_names for BN freeze.
+        self.freeze_layer_names = freeze_layer_names
 
         trainable_count = 0
         for k, v in self.model.named_parameters():
@@ -436,11 +459,12 @@ class QuantizationPrunedTrainer(DetectionTrainer):
         # ── Dataloaders ──────────────────────────────────────────────────────
         batch_size = self.batch_size // max(world_size, 1)
         self.train_loader = self.get_dataloader(
-            self.trainset, batch_size=batch_size, rank=RANK, mode='train'
+            self.data["train"], batch_size=batch_size, rank=RANK, mode='train'
         )
+        val_path = self.data.get("val") or self.data.get("test")
         if RANK in (-1, 0):
             self.test_loader = self.get_dataloader(
-                self.testset, batch_size=batch_size * 2, rank=-1, mode='val'
+                val_path, batch_size=batch_size * 2, rank=-1, mode='val'
             )
             self.validator = self.get_validator()
             metric_keys = self.validator.metrics.keys + self.label_loss_items(prefix='val')
