@@ -25,6 +25,15 @@ Benchmark trên **NVIDIA RTX PRO 6000 Blackwell Server Edition** (dùng để đ
 - Training set: **16 883 ảnh**, calibration entropy method với 512 batches.
 - Per-image test (80 ảnh test set), speedup trung bình: **1.24x** (các ảnh nhỏ bottleneck ở host preprocessing).
 
+> **Tại sao bản Pruned FP32 lại chậm hơn Original FP32 trên GPU mạnh?**
+>
+> Thông thường, pruning phải nhanh hơn. Tuy nhiên, trong trường hợp này có 2 lý do:
+>
+> 1. **Cấu trúc Custom Layer** — Bản pruned sử dụng các lớp `C2fPruned` và `DetectPruned` tùy chỉnh trong repo này để hỗ trợ việc cắt kênh linh hoạt. Các lớp này có thể chưa được tối ưu hóa tốt về mặt CUDA kernel như các lớp standard của Ultralytics.
+> 2. **Overhead của GPU mạnh** — Với GPU cao cấp như RTX 6000, việc xử lý 6.4M params (Pruned) và 11M params (Original) ở batch=1 có sự khác biệt cực nhỏ về thời gian tính toán thực tế, nhưng phần overhead điều phối của code Python / Custom Layer lại chiếm tỷ trọng lớn hơn.
+>
+> Sự khác biệt thực sự thể hiện rõ nhất khi chuyển sang **TensorRT INT8**, nơi các lớp đã được "nén" và tối ưu hóa hoàn toàn cho phần cứng. Để kiểm tra kỹ hơn, có thể xem chỉ số **GFLOPs** trong log khi load model — bản pruned chắc chắn sẽ có GFLOPs thấp hơn nhiều.
+
 ---
 
 ## Hardware đích: Jetson Orin Nano Super Developer Kit
